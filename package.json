@@ -5,7 +5,7 @@
   "displayName": "IPA File Share",
   "description": "Easy way of sharing you signed IPA files",
   "license": "MIT",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/GustavoBlaze/vscode-ipa-file-share"
