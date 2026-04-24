@@ -40,6 +40,12 @@
           "type": "string",
           "default": "",
           "description": "Seu Authtoken do ngrok (pegue em dashboard.ngrok.com)"
+        },
+        "ipaFileShare.qrDirectItmsInstall": {
+          "type": "boolean",
+          "default": false,
+          "title": "QR: instalação OTA direta (itms-services)",
+          "description": "Se ativado, o QR codifica o link itms-services (instalação após escanear). Se desativado, o QR abre a página /install com o botão de instalar."
         }
       }
     }

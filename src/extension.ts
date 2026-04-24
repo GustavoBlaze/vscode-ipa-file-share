@@ -15,6 +15,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         const config = vscode.workspace.getConfiguration('ipaFileShare');
         const token = config.get<string>('ngrokToken');
+        const qrDirectItmsInstall = config.get<boolean>('qrDirectItmsInstall') ?? false;
 
         if (!token) {
             const setup = 'Configurar Token';
@@ -51,7 +52,7 @@ export function activate(context: vscode.ExtensionContext) {
                 const itmsUrl = `itms-services://?action=download-manifest&url=${encodeURIComponent(manifestHttpsUrl)}`;
                 res.setHeader('ngrok-skip-browser-warning', 'true');
                 res.set('Content-Type', 'text/html; charset=utf-8');
-                res.send(otaInstallLandingHtml(metadata, base, itmsUrl));
+                res.send(otaInstallLandingHtml(metadata, base, manifestHttpsUrl, itmsUrl));
             });
 
             const server: Server = app.listen(0);
@@ -75,9 +76,19 @@ export function activate(context: vscode.ExtensionContext) {
                 { enableScripts: true }
             );
 
-            const installPageUrl = `${publicUrl.replace(/\/$/, '')}/install`;
-            const qrCodeDataUrl = await QRCode.toDataURL(installPageUrl);
-            panel.webview.html = getWebviewContent(metadata, qrCodeDataUrl, publicUrl, installPageUrl);
+            const base = publicUrl.replace(/\/$/, '');
+            const manifestHttpsUrl = `${base}/manifest.plist`;
+            const itmsUrl = `itms-services://?action=download-manifest&url=${encodeURIComponent(manifestHttpsUrl)}`;
+            const installPageUrl = `${base}/install`;
+            const qrPayload = qrDirectItmsInstall ? itmsUrl : installPageUrl;
+            const qrCodeDataUrl = await QRCode.toDataURL(qrPayload, { errorCorrectionLevel: 'M' });
+            panel.webview.html = getWebviewContent(
+                metadata,
+                qrCodeDataUrl,
+                publicUrl,
+                qrPayload,
+                qrDirectItmsInstall
+            );
 
             // 5. Cleanup ao fechar a aba
             panel.onDidDispose(() => {
@@ -121,11 +132,17 @@ function escapeHtml(text: string): string {
 }
 
 /** Página aberta pelo QR; CTA usa itms-services com URL HTTPS do manifest (exigido pela Apple). */
-function otaInstallLandingHtml(meta: { name: string; version: string; id: string }, publicBaseUrl: string, itmsUrl: string): string {
+function otaInstallLandingHtml(
+    meta: { name: string; version: string; id: string },
+    publicBaseUrl: string,
+    manifestHttpsUrl: string,
+    itmsUrl: string
+): string {
     const title = escapeHtml(meta.name);
     const version = escapeHtml(String(meta.version ?? ''));
     const id = escapeHtml(String(meta.id ?? ''));
     const href = escapeHtml(itmsUrl);
+    const manifestValue = escapeHtml(manifestHttpsUrl);
 
     return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -137,7 +154,18 @@ function otaInstallLandingHtml(meta: { name: string; version: string; id: string
     :root { color-scheme: light dark; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 1.25rem; max-width: 28rem; margin-inline: auto; }
     h1 { font-size: 1.35rem; margin: 0 0 0.5rem; }
+    h2 { font-size: 0.85rem; font-weight: 600; color: #888; margin: 1.25rem 0 0.5rem; text-transform: uppercase; letter-spacing: 0.02em; }
     .meta { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; word-break: break-all; }
+    .manifest-row { display: flex; flex-direction: column; gap: 0.5rem; }
+    .manifest-row input {
+      width: 100%; box-sizing: border-box; font-size: 0.8rem; padding: 0.6rem 0.5rem; border-radius: 8px;
+      border: 1px solid #ccc; background: var(--input-bg, rgba(0,0,0,.04)); color: inherit;
+    }
+    .copy-btn {
+      align-self: flex-start; font-size: 0.9rem; font-weight: 600; padding: 0.5rem 0.9rem; border-radius: 8px;
+      border: 1px solid #007aff; background: transparent; color: #007aff; cursor: pointer;
+    }
+    .copy-btn:active { opacity: 0.8; }
     .cta {
       display: block; text-align: center; text-decoration: none;
       background: #007aff; color: #fff !important; font-weight: 600;
@@ -152,8 +180,39 @@ function otaInstallLandingHtml(meta: { name: string; version: string; id: string
   <h1>${title}</h1>
   <p class="meta">Versão ${version}<br /><span style="opacity:.85">${id}</span></p>
   <a class="cta" href="${href}">Instalar no iPhone</a>
+  <h2>URL do manifest (HTTPS)</h2>
+  <div class="manifest-row">
+    <input type="text" id="manifest-url" readonly value="${manifestValue}" />
+    <button type="button" class="copy-btn" id="copy-manifest">Copiar link</button>
+  </div>
   <p class="hint">Abra esta página no <strong>Safari</strong> e toque no botão. Na primeira vez pode ser preciso confiar no perfil em Ajustes → Geral → VPN e Gerenciamento de Dispositivo.</p>
   <p class="url">${escapeHtml(publicBaseUrl)}</p>
+  <script>
+  (function () {
+    var input = document.getElementById("manifest-url");
+    var btn = document.getElementById("copy-manifest");
+    if (!input || !btn) return;
+    function copy() {
+      var v = input.value;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(v).then(function () {
+          var t = btn.textContent;
+          btn.textContent = "Copiado!";
+          setTimeout(function () { btn.textContent = t; }, 2000);
+        });
+      }
+      input.select();
+      input.setSelectionRange(0, 99999);
+      try {
+        document.execCommand("copy");
+        var t = btn.textContent;
+        btn.textContent = "Copiado!";
+        setTimeout(function () { btn.textContent = t; }, 2000);
+      } catch (e) {}
+    }
+    btn.addEventListener("click", copy);
+  })();
+  </script>
 </body>
 </html>`;
 }
@@ -192,14 +251,24 @@ function generateManifest(url: string, meta: any) {
     </plist>`;
 }
 
-function getWebviewContent(meta: any, qr: string, tunnelUrl: string, installPageUrl: string) {
+function getWebviewContent(
+    meta: any,
+    qr: string,
+    tunnelUrl: string,
+    qrPayload: string,
+    qrDirectItms: boolean
+) {
+    const hint = qrDirectItms
+        ? 'O QR codifica o link <strong>itms-services</strong>: ao escanear no iPhone, o fluxo de instalação OTA pode iniciar direto (use a câmera ou o app Código QR).'
+        : 'O QR abre a página <strong>/install</strong> no iPhone; nela, toque em <strong>Instalar no iPhone</strong> ou copie a URL do manifest.';
+
     return `<html>
         <body style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif;">
             <h2>${escapeHtml(meta.name)}</h2>
             <p>Versão: ${escapeHtml(String(meta.version))} (${escapeHtml(String(meta.id))})</p>
             <img src="${qr}" style="width:250px; border: 10px solid white; border-radius:10px;" />
-            <p style="margin-top:20px; color:gray; max-width:320px; text-align:center;">O QR abre uma página no iPhone; nela, toque em <strong>Instalar no iPhone</strong> para iniciar o download OTA.</p>
-            <p style="font-size:11px; color:#888; max-width:360px; word-break:break-all;">${escapeHtml(installPageUrl)}</p>
+            <p style="margin-top:20px; color:gray; max-width:320px; text-align:center;">${hint}</p>
+            <p style="font-size:11px; color:#888; max-width:360px; word-break:break-all;">${escapeHtml(qrPayload)}</p>
             <p style="font-size:10px; color:silver;">Tunnel: ${escapeHtml(tunnelUrl)}</p>
         </body>
     </html>`;
