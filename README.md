@@ -1,71 +1,55 @@
-# ipa-file-share README
+IPA File Share 📱🚀
+IPA File Share is a VS Code and Cursor extension designed to streamline the installation of .ipa files on iPhones. It eliminates the need for external services like Diawi by turning your local machine into a secure Over-the-Air (OTA) distribution server using an HTTPS tunnel.
 
-This is the README for your extension "ipa-file-share". After writing up a brief description, we recommend including the following sections.
+✨ Features
+OTA (Over-the-Air) Installation: Generate a QR Code and install apps directly via the iOS camera.
 
-## Features
+Global Access: Thanks to ngrok, your phone does not need to be on the same network as your computer. You can install your build from anywhere with internet access.
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+Automatic Metadata Extraction: Automatically parses the Info.plist inside your IPA to retrieve the Bundle ID, version, and app name.
 
-For example if there is an image subfolder under your extension project workspace:
+Temporary Secure Tunnel: Uses ngrok to provide a valid HTTPS connection (required by iOS).
 
-\!\[feature X\]\(images/feature-x.png\)
+Auto-Cleanup: The server and the tunnel are automatically destroyed as soon as you close the QR Code tab in the editor.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+🛠️ Prerequisites
+ngrok Authtoken: You need a free account at ngrok to enable tunneling.
 
-## Requirements
+Signed IPA: Ensure your .ipa is signed with a valid Development or Ad Hoc profile (e.g., generated via eas build --local).
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+🚀 How to Use
+Installation:
 
-## Extension Settings
+Open the extension project in VS Code.
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+Run npm install to install dependencies.
 
-For example:
+Press F5 to launch the extension in development mode.
 
-This extension contributes the following settings:
+Token Configuration:
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+Go to Settings (Cmd + , or Ctrl + ,).
 
-## Known Issues
+Search for IPA File Share Config.
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+Paste your ngrok Authtoken.
 
-## Release Notes
+Installation Flow:
 
-Users appreciate release notes as you update your extension.
+Right-click any .ipa file in the Explorer.
 
-### 1.0.0
+Select IPA File Share.
 
-Initial release of ...
+Scan the QR Code with your iPhone and follow the system prompts.
 
-### 1.0.1
+Note: Close the QR Code tab in VS Code once finished to shut down the server and tunnel.
 
-Fixed issue #.
+📦 Project Structure
+src/extension.ts: Main logic, Express server management, and ngrok tunnel lifecycle.
 
-### 1.1.0
+package.json: Command registration, context menus, and extension properties.
 
-Added features X, Y, and Z.
+🛡️ Security & Privacy
+The extension injects the ngrok-skip-browser-warning header to ensure the iOS installer can reach the manifest without manual interaction. The tunnel is ephemeral—it only stays open while the extension tab is active in your editor, ensuring your build isn't exposed longer than necessary.
 
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+Tip: This is the perfect companion for eas build --local workflows, allowing you to test physical device builds in seconds without uploading files to third-party servers.

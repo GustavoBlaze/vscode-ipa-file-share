@@ -1,9 +1,15 @@
 {
   "name": "ipa-file-share",
+  "icon": "icon.png",
   "publisher": "gustavoblaze",
   "displayName": "IPA File Share",
   "description": "Easy way of sharing you signed IPA files",
+  "license": "MIT",
   "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GustavoBlaze/vscode-ipa-file-share"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -44,7 +50,8 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "build": "npx @vscode/vsce@latest package" 
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.8",
